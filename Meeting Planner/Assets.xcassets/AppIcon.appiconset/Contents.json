@@ -1,6 +1,7 @@
 {
   "images" : [
     {
+      "filename" : "meeting-planner-icon-1024x1024.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -12,6 +13,7 @@
           "value" : "dark"
         }
       ],
+      "filename" : "meeting-planner-deep-1024x1024.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -23,6 +25,7 @@
           "value" : "tinted"
         }
       ],
+      "filename" : "meeting-planner-icon-1024x1024 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
