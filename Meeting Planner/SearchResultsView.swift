@@ -8,6 +8,15 @@ struct SearchResultsView: View {
     
     @State private var selectedLocation: LocationAnalysis?
     @State private var showingSaveConfirmation = false
+    @State private var showingEditMeeting = false
+    @State private var editableMeeting: Meeting
+    
+    init(results: [LocationAnalysis], meeting: Meeting, onStartNewSearch: @escaping () -> Void) {
+        self.results = results
+        self.meeting = meeting
+        self.onStartNewSearch = onStartNewSearch
+        self._editableMeeting = State(initialValue: meeting)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -52,21 +61,71 @@ struct SearchResultsView: View {
                     .cornerRadius(10)
                 }
                 
-                Button(action: onStartNewSearch) {
-                    Text("Start New Search")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
+                HStack(spacing: 12) {
+                    Button("Edit Meeting") {
+                        editableMeeting = meeting
+                        showingEditMeeting = true
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.orange)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                    
+                    Button("New Search") {
+                        onStartNewSearch()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
                 }
-            }
-            .padding(.horizontal)
+            }            .padding(.horizontal)
             .padding(.bottom)
         }
         .sheet(item: $selectedLocation) { analysis in
             LocationDetailView(analysis: analysis, meeting: meeting)
         }
+        .sheet(isPresented: $showingEditMeeting) {
+            NavigationView {
+                TabView {
+                    MeetingDetailsView(meeting: $editableMeeting)
+                        .tabItem {
+                            Label("Details", systemImage: "calendar")
+                        }
+                    
+                    LocationsView(meeting: $editableMeeting)
+                        .tabItem {
+                            Label("Locations", systemImage: "location")
+                        }
+                    
+                    AttendeesView(meeting: $editableMeeting)
+                        .tabItem {
+                            Label("Attendees", systemImage: "person.2")
+                        }
+                }
+                .navigationTitle("Edit Meeting")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancel") {
+                            editableMeeting = meeting
+                            showingEditMeeting = false
+                        }
+                    }
+                    
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Search Again") {
+                            showingEditMeeting = false
+                            onStartNewSearch()
+                        }
+                        .fontWeight(.semibold)
+                    }
+                }
+            }
+        }
+
         .alert("Meeting Saved", isPresented: $showingSaveConfirmation) {
             Button("OK") { }
         } message: {
