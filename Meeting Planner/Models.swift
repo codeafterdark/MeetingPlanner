@@ -90,9 +90,29 @@ struct LocationAnalysis: Identifiable {
     var totalCost: Decimal
     var averageCostPerPerson: Decimal
     var currency: String
+    var totalAttendeesSearched: Int // Track how many attendees were supposed to have flights to this location
     
     // Computed
     var attendeeCount: Int {
         flightResults.count
+    }
+    
+    // New computed property to show success rate
+    var successfulFlightSearches: Int {
+        flightResults.count
+    }
+    
+    var hasPartialResults: Bool {
+        flightResults.count < totalAttendeesSearched
+    }
+    
+    var missingFlightCount: Int {
+        totalAttendeesSearched - flightResults.count
+    }
+    
+    var hasConnectionFlights: Bool {
+        flightResults.contains { result in
+            result.outboundFlight.stops > 0 || result.returnFlight.stops > 0
+        }
     }
 }

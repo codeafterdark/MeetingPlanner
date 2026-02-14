@@ -4,8 +4,10 @@ struct SearchResultsView: View {
     let results: [LocationAnalysis]
     let meeting: Meeting
     let onStartNewSearch: () -> Void
+    @Environment(AppServices.self) var appServices
     
     @State private var selectedLocation: LocationAnalysis?
+    @State private var showingSaveConfirmation = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -36,14 +38,28 @@ struct SearchResultsView: View {
                 .padding(.horizontal)
             }
             
-            // Action Button
-            Button(action: onStartNewSearch) {
-                Text("Start New Search")
+            // Action Buttons
+            VStack(spacing: 12) {
+                Button(action: saveMeeting) {
+                    HStack {
+                        Image(systemName: "square.and.arrow.down")
+                        Text("Save Meeting & Results")
+                    }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.blue)
+                    .background(Color.green)
                     .foregroundColor(.white)
                     .cornerRadius(10)
+                }
+                
+                Button(action: onStartNewSearch) {
+                    Text("Start New Search")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
             }
             .padding(.horizontal)
             .padding(.bottom)
@@ -51,6 +67,16 @@ struct SearchResultsView: View {
         .sheet(item: $selectedLocation) { analysis in
             LocationDetailView(analysis: analysis, meeting: meeting)
         }
+        .alert("Meeting Saved", isPresented: $showingSaveConfirmation) {
+            Button("OK") { }
+        } message: {
+            Text("Your meeting and search results have been saved successfully.")
+        }
+    }
+    
+    private func saveMeeting() {
+        appServices.meetingDataManager.saveMeeting(meeting, searchResults: results)
+        showingSaveConfirmation = true
     }
 }
 
@@ -98,9 +124,30 @@ struct LocationResultCard: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
-                    Text("\(analysis.attendeeCount) attendee\(analysis.attendeeCount == 1 ? "" : "s")")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    if analysis.hasPartialResults {
+                        Text("\(analysis.successfulFlightSearches) of \(analysis.totalAttendeesSearched) attendees")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    } else {
+                        HStack {
+                            Text("\(analysis.attendeeCount) attendee\(analysis.attendeeCount == 1 ? "" : "s")")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            // Show connecting flight indicator
+                            if analysis.hasConnectionFlights {
+                                Text("•")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Image(systemName: "arrow.triangle.branch")
+                                    .font(.caption2)
+                                    .foregroundColor(.orange)
+                                Text("connections")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                    }
                 }
                 
                 Spacer()
@@ -180,10 +227,20 @@ struct LocationDetailView: View {
                             }
                             
                             HStack {
-                                Text("Number of attendees:")
+                                Text("Attendees with flights:")
                                 Spacer()
-                                Text("\(analysis.attendeeCount)")
-                                    .foregroundColor(.secondary)
+                                if analysis.hasPartialResults {
+                                    VStack(alignment: .trailing, spacing: 2) {
+                                        Text("\(analysis.successfulFlightSearches) of \(analysis.totalAttendeesSearched)")
+                                            .foregroundColor(.secondary)
+                                        Text("(\(analysis.missingFlightCount) missing)")
+                                            .font(.caption)
+                                            .foregroundColor(.orange)
+                                    }
+                                } else {
+                                    Text("\(analysis.attendeeCount) of \(analysis.totalAttendeesSearched)")
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
                     }
@@ -199,6 +256,36 @@ struct LocationDetailView: View {
                         ForEach(analysis.flightResults.sorted { $0.totalPrice < $1.totalPrice }) { result in
                             AttendeeFlightCard(result: result, currencyFormatter: currencyFormatter)
                         }
+                    }
+                    
+                    // Missing Flights Warning (if any)
+                    if analysis.hasPartialResults {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .foregroundColor(.orange)
+                                Text("Missing Flight Data")
+                                    .font(.headline)
+                                    .foregroundColor(.orange)
+                            }
+                            
+                            Text("No flights found for \(analysis.missingFlightCount) attendee\(analysis.missingFlightCount == 1 ? "" : "s") to this destination. This may be due to:")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("• No available flights on selected dates")
+                                Text("• No direct or connecting flights available")
+                                Text("• Remote destinations with limited service")
+                                Text("• API rate limiting or temporary issues")
+                            }
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.leading)
+                        }
+                        .padding()
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(8)
                     }
                     
                     // Meeting Details
@@ -284,19 +371,35 @@ struct FlightLegView: View {
     let label: String
     
     var body: some View {
-        HStack {
-            Text("\(label):")
-                .fontWeight(.medium)
-            Text("\(from) → \(to)")
-            
-            if let duration = details.duration {
-                Text("•")
-                Text(duration)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text("\(label):")
+                    .fontWeight(.medium)
+                Text("\(from) → \(to)")
+                
+                if let duration = details.duration {
+                    Text("•")
+                    Text(duration)
+                }
+                
+                Spacer()
             }
             
-            if details.stops > 0 {
-                Text("•")
-                Text("\(details.stops) stop\(details.stops == 1 ? "" : "s")")
+            HStack {
+                if let airline = details.airline {
+                    Text(airline)
+                        .foregroundColor(.secondary)
+                }
+                
+                if details.stops > 0 {
+                    Text("•")
+                        .foregroundColor(.secondary)
+                    Text("\(details.stops) stop\(details.stops == 1 ? "" : "s")")
+                        .foregroundColor(.orange)
+                        .fontWeight(.medium)
+                }
+                
+                Spacer()
             }
         }
     }
@@ -326,14 +429,16 @@ struct SearchResultsView_Previews: PreviewProvider {
                     flightResults: [],
                     totalCost: 1200.00,
                     averageCostPerPerson: 600.00,
-                    currency: "USD"
+                    currency: "USD",
+                    totalAttendeesSearched: 2
                 ),
                 LocationAnalysis(
                     location: Location(cityName: "New York", airportCode: "JFK", countryCode: "US"),
                     flightResults: [],
                     totalCost: 1500.00,
                     averageCostPerPerson: 750.00,
-                    currency: "USD"
+                    currency: "USD",
+                    totalAttendeesSearched: 2
                 )
             ],
             meeting: Meeting(name: "Test Meeting"),

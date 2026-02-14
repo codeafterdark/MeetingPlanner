@@ -1,8 +1,9 @@
 import SwiftUI
+import Foundation
 
 struct MeetingCreationFlow: View {
-    @EnvironmentObject var appServices: AppServices
-    @StateObject private var viewModel = MeetingViewModel()
+    @Environment(AppServices.self) var appServices
+    @State private var viewModel = MeetingViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var currentStep = 0
     
@@ -77,8 +78,7 @@ struct MeetingCreationFlow: View {
                 }
             }
         }
-        .environmentObject(appServices)
-        .onReceive(viewModel.$shouldDismiss) { shouldDismiss in
+        .onChange(of: viewModel.shouldDismiss) { _, shouldDismiss in
             if shouldDismiss {
                 dismiss()
             }
@@ -102,6 +102,6 @@ struct MeetingCreationFlow: View {
 struct MeetingCreationFlow_Previews: PreviewProvider {
     static var previews: some View {
         MeetingCreationFlow()
-            .environmentObject(AppServices())
+            .environment(AppServices())
     }
 }

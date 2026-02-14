@@ -2,10 +2,10 @@ import SwiftUI
 
 struct SavedMeetingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var dataManager = MeetingDataManager()
     @State private var selectedMeeting: SavedMeeting?
     @State private var showingMeetingCreation = false
     
+    let dataManager: MeetingDataManager
     let onMeetingSelected: (Meeting, [LocationAnalysis]) -> Void
     
     private var dateFormatter: DateFormatter {
@@ -119,7 +119,7 @@ struct SavedMeetingCard: View {
                         Image(systemName: "ellipsis.circle")
                             .foregroundColor(.secondary)
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .buttonStyle(.plain)
                 }
                 
                 HStack(spacing: 16) {
@@ -164,11 +164,11 @@ struct SavedMeetingCard: View {
                 
                 Text("Saved \(timeFormatter.string(from: savedMeeting.savedAt))")
                     .font(.caption2)
-                    .foregroundColor(.tertiary)
+                    .foregroundStyle(.tertiary)
             }
             .padding(.vertical, 4)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
     }
 }
 
@@ -292,24 +292,11 @@ struct SavedMeetingDetailView: View {
     }
 }
 
-struct DetailRow: View {
-    let label: String
-    let value: String
-    
-    var body: some View {
-        HStack {
-            Text(label)
-                .foregroundColor(.secondary)
-            Spacer()
-            Text(value)
-                .fontWeight(.medium)
-        }
-    }
-}
+
 
 struct SavedMeetingsView_Previews: PreviewProvider {
     static var previews: some View {
-        SavedMeetingsView { meeting, results in
+        SavedMeetingsView(dataManager: MeetingDataManager()) { meeting, results in
             print("Selected meeting: \(meeting.name)")
         }
     }

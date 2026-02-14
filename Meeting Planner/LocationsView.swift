@@ -66,7 +66,7 @@ struct LocationsView: View {
             .padding(.bottom)
         }
         .sheet(isPresented: $showingAddLocation) {
-            AddLocationView(locations: $meeting.potentialLocations)
+            EnhancedAddLocationView(locations: $meeting.potentialLocations)
         }
     }
 }
@@ -99,7 +99,205 @@ struct LocationCard: View {
     }
 }
 
-struct AddLocationView: View {
+struct EnhancedAddLocationView: View {
+    @Binding var locations: [Location]
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var searchText = ""
+    @State private var selectedAirport: AirportData?
+    @State private var showManualEntry = false
+    @StateObject private var airportSearchService = AirportSearchService(
+        apiKey: Config.amadeusAPIKey,
+        apiSecret: Config.amadeusAPISecret
+    )
+    
+    // Manual entry fields
+    @State private var manualCityName = ""
+    @State private var manualAirportCode = ""
+    @State private var manualCountryCode = "US"
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Search Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Search for airports")
+                        .font(.headline)
+                        .padding(.horizontal)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Enter city name (e.g., \"New York\") or state code (e.g., \"CA\" for California)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal)
+                        
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.secondary)
+                            
+                            TextField("Search city or state...", text: $searchText)
+                                .textInputAutocapitalization(.words)
+                                .onChange(of: searchText) { newValue in
+                                    Task {
+                                        await airportSearchService.searchAirports(for: newValue)
+                                    }
+                                }
+                            
+                            if airportSearchService.isSearching {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
+                        .padding(.horizontal)
+                    }
+                }
+                .padding(.top)
+                
+                // Search Results
+                if !airportSearchService.searchResults.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Airport Results")
+                            .font(.headline)
+                            .padding(.horizontal)
+                            .padding(.top)
+                        
+                        ScrollView {
+                            LazyVStack(spacing: 8) {
+                                ForEach(airportSearchService.searchResults) { airport in
+                                    AirportResultCard(
+                                        airport: airport,
+                                        isSelected: selectedAirport?.id == airport.id
+                                    ) {
+                                        selectedAirport = airport
+                                    }
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                } else if !searchText.isEmpty && !airportSearchService.isSearching {
+                    VStack(spacing: 12) {
+                        if let error = airportSearchService.lastError {
+                            Label(error, systemImage: "exclamationmark.triangle")
+                                .foregroundColor(.orange)
+                                .padding()
+                        } else {
+                            Text("No airports found")
+                                .foregroundColor(.secondary)
+                                .padding()
+                        }
+                        
+                        Button("Add location manually instead") {
+                            showManualEntry = true
+                        }
+                        .foregroundColor(.blue)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    VStack(spacing: 16) {
+                        Image(systemName: "airplane.circle")
+                            .font(.system(size: 50))
+                            .foregroundColor(.secondary)
+                        
+                        VStack(spacing: 8) {
+                            Text("Find airports near you")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                            
+                            Text("Search by city name or state code")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Button("Or add location manually") {
+                            showManualEntry = true
+                        }
+                        .foregroundColor(.blue)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                
+                Spacer()
+            }
+            .navigationTitle("Add Location")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Add") {
+                        if let airport = selectedAirport {
+                            let newLocation = Location(
+                                cityName: airport.address.cityName,
+                                airportCode: airport.iataCode,
+                                countryCode: airport.address.countryCode
+                            )
+                            locations.append(newLocation)
+                            dismiss()
+                        }
+                    }
+                    .disabled(selectedAirport == nil)
+                }
+            }
+            .sheet(isPresented: $showManualEntry) {
+                ManualLocationEntryView(locations: $locations)
+            }
+        }
+    }
+}
+
+struct AirportResultCard: View {
+    let airport: AirportData
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(airport.name)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                    
+                    Text(airport.displayName)
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
+                    
+                    Text(airport.cityAndCountry)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.blue)
+                        .font(.title2)
+                }
+            }
+            .padding()
+            .background(isSelected ? Color.blue.opacity(0.1) : Color(.systemGray6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+            )
+            .cornerRadius(10)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct ManualLocationEntryView: View {
     @Binding var locations: [Location]
     @Environment(\.dismiss) private var dismiss
     
@@ -135,7 +333,7 @@ struct AddLocationView: View {
                     }
                 }
             }
-            .navigationTitle("Add Location")
+            .navigationTitle("Manual Entry")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

@@ -4,4 +4,16 @@
    <FileRef
       location = "self:">
    </FileRef>
+   <FileRef
+      location = "group:Info.plist">
+   </FileRef>
+   <FileRef
+      location = "group:Meeting_PlannerApp.swift">
+   </FileRef>
+   <FileRef
+      location = "group:AppServices.swift">
+   </FileRef>
+   <FileRef
+      location = "group:Models.swift">
+   </FileRef>
 </Workspace>

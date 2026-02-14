@@ -2,16 +2,30 @@ import SwiftUI
 import Foundation
 
 @MainActor
-class MeetingViewModel: ObservableObject {
-    @Published var meeting = Meeting()
-    @Published var isSearching: Bool = false
-    @Published var searchProgress: Double = 0.0
-    @Published var progressMessage: String = ""
-    @Published var results: [LocationAnalysis] = []
-    @Published var errorMessage: String?
-    @Published var shouldDismiss: Bool = false
+@Observable
+class MeetingViewModel {
+    var meeting = Meeting()
+    var isSearching: Bool = false
+    var searchProgress: Double = 0.0
+    var progressMessage: String = ""
+    var results: [LocationAnalysis] = []
+    var errorMessage: String?
+    var shouldDismiss: Bool = false
     
     private var searchTask: Task<Void, Never>?
+    
+    // MARK: - Initialization
+    
+    init() {
+        // Default init
+    }
+    
+    init(meeting: Meeting, searchResults: [LocationAnalysis] = []) {
+        self.meeting = meeting
+        self.results = searchResults
+    }
+    
+    // MARK: - Search Management
     
     func searchFlights(using flightService: FlightSearchService) {
         guard !isSearching else { return }
@@ -29,74 +43,28 @@ class MeetingViewModel: ObservableObject {
         progressMessage = ""
     }
     
+    // MARK: - Meeting Management
+    
+    func saveMeeting(using dataManager: MeetingDataManager) {
+        dataManager.saveMeeting(meeting, searchResults: results)
+    }
+    
+    func loadMeeting(_ meeting: Meeting, searchResults: [LocationAnalysis] = []) {
+        self.meeting = meeting
+        self.results = searchResults
+    }
+    
     private func performSearch(using flightService: FlightSearchService) async {
         isSearching = true
         errorMessage = nil
         results = []
         
-        let totalSearches = meeting.attendees.count * meeting.potentialLocations.count
-        var completedSearches = 0
-        
         do {
-            var allResults: [FlightSearchResult] = []
-            
-            for attendee in meeting.attendees {
-                for location in meeting.potentialLocations {
-                    guard !Task.isCancelled else {
-                        isSearching = false
-                        return
-                    }
-                    
-                    // Update progress
-                    let progress = Double(completedSearches) / Double(totalSearches)
-                    searchProgress = progress
-                    progressMessage = "Searching \(attendee.homeAirport) → \(location.airportCode)..."
-                    
-                    do {
-                        let offers = try await flightService.searchFlights(
-                            from: attendee.homeAirport,
-                            to: location.airportCode,
-                            departureDate: meeting.actualStartDate,
-                            returnDate: meeting.actualEndDate
-                        )
-                        
-                        if let cheapest = offers.first {
-                            let result = FlightSearchResult(
-                                attendee: attendee,
-                                destination: location,
-                                outboundFlight: FlightDetails(
-                                    departureDate: meeting.actualStartDate,
-                                    arrivalDate: meeting.actualStartDate,
-                                    departureAirport: attendee.homeAirport,
-                                    arrivalAirport: location.airportCode,
-                                    stops: max(0, (cheapest.itineraries.first?.segments.count ?? 1) - 1),
-                                    airline: cheapest.itineraries.first?.segments.first?.carrierCode,
-                                    duration: cheapest.itineraries.first?.duration
-                                ),
-                                returnFlight: FlightDetails(
-                                    departureDate: meeting.actualEndDate,
-                                    arrivalDate: meeting.actualEndDate,
-                                    departureAirport: location.airportCode,
-                                    arrivalAirport: attendee.homeAirport,
-                                    stops: 0,
-                                    airline: nil,
-                                    duration: nil
-                                ),
-                                totalPrice: Decimal(string: cheapest.price.total) ?? 0,
-                                currency: cheapest.price.currency,
-                                searchedAt: Date()
-                            )
-                            allResults.append(result)
-                        }
-                    } catch {
-                        print("Search failed for \(attendee.name) to \(location.cityName): \(error)")
-                        // Continue with other searches
-                    }
-                    
-                    completedSearches += 1
-                    
-                    // Rate limiting delay
-                    try? await Task.sleep(nanoseconds: 500_000_000)
+            // Use the FlightSearchService's rate-limited search method with progress callback
+            let allResults = try await flightService.searchAllCombinations(meeting: meeting) { progress, message in
+                Task { @MainActor in
+                    self.searchProgress = progress
+                    self.progressMessage = message
                 }
             }
             
@@ -114,7 +82,8 @@ class MeetingViewModel: ObservableObject {
                     flightResults: results,
                     totalCost: totalCost,
                     averageCostPerPerson: averageCost,
-                    currency: results.first?.currency ?? "USD"
+                    currency: results.first?.currency ?? "USD",
+                    totalAttendeesSearched: meeting.attendees.count
                 )
             }
             
