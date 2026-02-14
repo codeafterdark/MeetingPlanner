@@ -42,28 +42,29 @@ struct AttendeesView: View {
                                 meeting.attendees.removeAll { $0.id == attendee.id }
                             }
                         }
+                        
+                        // Add Attendee button within scroll view
+                        Button(action: {
+                            showingAddAttendee = true
+                        }) {
+                            HStack {
+                                Image(systemName: "plus")
+                                Text("Add Attendee")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
+                        .padding(.top, 8)
+                        
+                        // Bottom padding for safe scrolling
+                        Color.clear.frame(height: 20)
                     }
                     .padding(.horizontal)
                 }
-                
-                Spacer()
             }
-            
-            Button(action: {
-                showingAddAttendee = true
-            }) {
-                HStack {
-                    Image(systemName: "plus")
-                    Text("Add Attendee")
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(10)
-            }
-            .padding(.horizontal)
-            .padding(.bottom)
         }
         .sheet(isPresented: $showingAddAttendee) {
             AddAttendeeView(attendees: $meeting.attendees)

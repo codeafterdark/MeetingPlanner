@@ -364,6 +364,7 @@ struct LocationDetailView: View {
                     .cornerRadius(12)
                 }
                 .padding()
+                .padding(.bottom, 20) // Extra bottom padding for safe scrolling
             }
             .navigationTitle(analysis.location.cityName)
             .navigationBarTitleDisplayMode(.large)
@@ -395,9 +396,20 @@ struct AttendeeFlightCard: View {
                     .fontWeight(.semibold)
             }
             
+            // Alternative airport notification
+            if let altInfo = result.alternativeAirportUsed {
+                HStack {
+                    Image(systemName: "location.circle")
+                        .foregroundColor(.orange)
+                    Text("Alternative airport: \(altInfo.alternativeAirport) (\(String(format: "%.1f", altInfo.distanceInMiles)) mi from \(altInfo.originalAirport))")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+            }
+            
             VStack(alignment: .leading, spacing: 4) {
                 FlightLegView(
-                    from: result.attendee.homeAirport,
+                    from: result.outboundFlight.departureAirport,
                     to: result.destination.airportCode,
                     details: result.outboundFlight,
                     label: "Outbound"
@@ -405,7 +417,7 @@ struct AttendeeFlightCard: View {
                 
                 FlightLegView(
                     from: result.destination.airportCode,
-                    to: result.attendee.homeAirport,
+                    to: result.returnFlight.arrivalAirport,
                     details: result.returnFlight,
                     label: "Return"
                 )

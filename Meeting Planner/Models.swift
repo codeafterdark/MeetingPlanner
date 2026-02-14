@@ -71,6 +71,7 @@ struct FlightSearchResult: Identifiable, Codable {
     var totalPrice: Decimal
     var currency: String
     var searchedAt: Date
+    var alternativeAirportUsed: AlternativeAirportInfo? // New field for nearby airport info
 }
 
 struct FlightDetails: Codable {
@@ -81,6 +82,20 @@ struct FlightDetails: Codable {
     var stops: Int
     var airline: String?
     var duration: String?  // e.g., "3h 45m"
+    var isFromAlternativeAirport: Bool = false // New field
+    var originalRequestedAirport: String? // New field to track original airport
+}
+
+struct AlternativeAirportInfo: Codable {
+    var originalAirport: String
+    var alternativeAirport: String
+    var distanceInMiles: Double
+    var alternativeAirportName: String?
+    
+    var description: String {
+        let name = alternativeAirportName ?? alternativeAirport
+        return "Using \(name) (\(alternativeAirport)) - \(String(format: "%.1f", distanceInMiles)) miles from \(originalAirport)"
+    }
 }
 
 struct LocationAnalysis: Identifiable {

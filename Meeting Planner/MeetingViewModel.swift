@@ -59,6 +59,15 @@ class MeetingViewModel {
         errorMessage = nil
         results = []
         
+        // Log optimization statistics before starting search
+        let optimizationStats = flightService.getSearchOptimizationStats(for: meeting)
+        print("🚀 Flight Search Optimization:")
+        print(optimizationStats.summary)
+        
+        for group in optimizationStats.airportGroups {
+            print("  📍 \(group.description)")
+        }
+        
         do {
             // Use the FlightSearchService's rate-limited search method with progress callback
             let allResults = try await flightService.searchAllCombinations(meeting: meeting) { progress, message in
@@ -91,13 +100,20 @@ class MeetingViewModel {
             self.results = analyses.sorted { $0.totalCost < $1.totalCost }
             
             searchProgress = 1.0
-            progressMessage = "Search complete!"
+            progressMessage = "Search complete! Optimization saved \(optimizationStats.apiCallsSaved) API calls (\(optimizationStats.efficiencyPercentage)% more efficient)"
+            
+            // Log final optimization results
+            print("✅ Search completed with optimization:")
+            print("  🎯 Generated \(allResults.count) flight results")
+            print("  📊 Used \(optimizationStats.optimizedApiCalls) API calls instead of \(optimizationStats.standardApiCalls)")
+            print("  💰 Saved \(optimizationStats.apiCallsSaved) API calls (\(optimizationStats.efficiencyPercentage)% efficiency)")
             
             // Small delay to show completion, then dismiss
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             
         } catch {
             errorMessage = error.localizedDescription
+            print("❌ Search failed: \(error.localizedDescription)")
         }
         
         isSearching = false
@@ -123,5 +139,15 @@ extension MeetingViewModel {
     
     var estimatedAPICallsCount: Int {
         meeting.attendees.count * meeting.potentialLocations.count
+    }
+    
+    func getOptimizedAPICallsCount(using flightService: FlightSearchService) -> Int {
+        let stats = flightService.getSearchOptimizationStats(for: meeting)
+        return stats.optimizedApiCalls
+    }
+    
+    func getAPICallsSavings(using flightService: FlightSearchService) -> (saved: Int, percentage: Int) {
+        let stats = flightService.getSearchOptimizationStats(for: meeting)
+        return (stats.apiCallsSaved, stats.efficiencyPercentage)
     }
 }

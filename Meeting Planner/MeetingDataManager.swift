@@ -45,13 +45,89 @@ class MeetingDataManager {
         return savedMeetings.first { $0.id == id }
     }
     
+    /// Clears search results for a specific meeting
+    func clearSearchResults(for meetingId: UUID) {
+        if let index = savedMeetings.firstIndex(where: { $0.id == meetingId }) {
+            savedMeetings[index].searchResults = []
+            persistMeetings()
+            print("🔄 Cleared search results for meeting: \(savedMeetings[index].meeting.name)")
+        }
+    }
+    
     // MARK: - Update Meeting
     
-    func updateMeeting(_ savedMeeting: SavedMeeting) {
-        if let index = savedMeetings.firstIndex(where: { $0.id == savedMeeting.id }) {
-            savedMeetings[index] = savedMeeting
-            persistMeetings()
+    /// Updates meeting data and automatically clears search results if they're invalid
+    func updateMeeting(_ savedMeeting: SavedMeeting, forceRefreshResults: Bool = false) {
+        guard let index = savedMeetings.firstIndex(where: { $0.id == savedMeeting.id }) else {
+            print("⚠️ Warning: Attempting to update meeting that doesn't exist: \(savedMeeting.meeting.name)")
+            return
         }
+        
+        let originalMeeting = savedMeetings[index]
+        var updatedMeeting = savedMeeting
+        
+        // Determine if search results should be cleared
+        let shouldClearResults = forceRefreshResults || 
+                               searchResultsNeedRefresh(original: originalMeeting.meeting, updated: savedMeeting.meeting)
+        
+        if shouldClearResults && savedMeeting.hasSearchResults {
+            updatedMeeting.searchResults = []
+            print("🔄 Auto-cleared outdated search results for: \(savedMeeting.meeting.name)")
+            print("   - Reason: Meeting parameters changed (dates, locations, or attendees)")
+        }
+        
+        // Update the saved meeting
+        savedMeetings[index] = updatedMeeting
+        persistMeetings()
+        
+        print("💾 Updated meeting: \(savedMeeting.meeting.name)")
+    }
+    
+    /// Legacy method for backward compatibility
+    func updateMeeting(_ savedMeeting: SavedMeeting) {
+        updateMeeting(savedMeeting, forceRefreshResults: false)
+    }
+    
+    /// Enhanced method to detect if search results need refresh
+    private func searchResultsNeedRefresh(original: Meeting, updated: Meeting) -> Bool {
+        // Check critical search parameters
+        
+        // 1. Date changes (most important)
+        let startDateChanged = original.startDate != updated.startDate
+        let durationChanged = original.numberOfDays != updated.numberOfDays
+        let bufferChanged = original.travelBufferBefore != updated.travelBufferBefore || 
+                           original.travelBufferAfter != updated.travelBufferAfter
+        
+        // 2. Location changes
+        let locationCountChanged = original.potentialLocations.count != updated.potentialLocations.count
+        let locationsChanged = !Set(original.potentialLocations.map(\.id)).isSubset(of: Set(updated.potentialLocations.map(\.id))) ||
+                              !Set(updated.potentialLocations.map(\.id)).isSubset(of: Set(original.potentialLocations.map(\.id)))
+        
+        // 3. Attendee changes
+        let attendeeCountChanged = original.attendees.count != updated.attendees.count
+        let attendeesChanged = !Set(original.attendees.map(\.id)).isSubset(of: Set(updated.attendees.map(\.id))) ||
+                              !Set(updated.attendees.map(\.id)).isSubset(of: Set(original.attendees.map(\.id)))
+        
+        // 4. Airport changes for existing attendees
+        let attendeeAirportsChanged = original.attendees.contains { originalAttendee in
+            updated.attendees.first(where: { $0.id == originalAttendee.id })?.homeAirport != originalAttendee.homeAirport
+        }
+        
+        let hasChanges = startDateChanged || durationChanged || bufferChanged || 
+                        locationCountChanged || locationsChanged || 
+                        attendeeCountChanged || attendeesChanged || attendeeAirportsChanged
+        
+        if hasChanges {
+            print("🔍 Detected changes requiring search refresh:")
+            if startDateChanged { print("   - Start date changed") }
+            if durationChanged { print("   - Duration changed") }
+            if bufferChanged { print("   - Travel buffer changed") }
+            if locationCountChanged || locationsChanged { print("   - Locations changed") }
+            if attendeeCountChanged || attendeesChanged { print("   - Attendees changed") }
+            if attendeeAirportsChanged { print("   - Attendee airports changed") }
+        }
+        
+        return hasChanges
     }
     
     // MARK: - Sample Data
@@ -127,6 +203,32 @@ class MeetingDataManager {
         }
         
         saveMeeting(sampleMeeting, searchResults: sampleSearchResults)
+    }
+    
+    // MARK: - Debug & Utilities
+    
+    func clearAllData() {
+        savedMeetings = []
+        userDefaults.removeObject(forKey: meetingsKey)
+        userDefaults.synchronize()
+        print("🧹 All meeting data cleared")
+    }
+    
+    func debugPrintDataStatus() {
+        print("📊 Debug Data Status:")
+        print("  - Meetings in memory: \(savedMeetings.count)")
+        
+        if let data = userDefaults.data(forKey: meetingsKey) {
+            print("  - Data size in UserDefaults: \(data.count) bytes")
+            do {
+                let meetings = try JSONDecoder().decode([SavedMeeting].self, from: data)
+                print("  - Meetings in UserDefaults: \(meetings.count)")
+            } catch {
+                print("  - Error decoding UserDefaults data: \(error)")
+            }
+        } else {
+            print("  - No data found in UserDefaults")
+        }
     }
     
     // MARK: - Private Methods

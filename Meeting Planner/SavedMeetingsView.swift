@@ -182,9 +182,10 @@ extension NumberFormatter {
 }
 
 struct SavedMeetingDetailView: View {
-    let savedMeeting: SavedMeeting
+    @State var savedMeeting: SavedMeeting
     let onSelect: (Meeting, [LocationAnalysis]) -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var showingEditView = false
     
     private var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
@@ -282,15 +283,32 @@ struct SavedMeetingDetailView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Use This Meeting") {
-                        onSelect(savedMeeting.meeting, savedMeeting.searchResults)
+                    Menu {
+                        Button {
+                            showingEditView = true
+                        } label: {
+                            Label("Edit Meeting", systemImage: "pencil")
+                        }
+                        
+                        Button {
+                            onSelect(savedMeeting.meeting, savedMeeting.searchResults)
+                        } label: {
+                            Label("Use This Meeting", systemImage: "checkmark.circle")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
                     }
-                    .fontWeight(.semibold)
                 }
             }
         }
+        .sheet(isPresented: $showingEditView) {
+            EditMeetingView(savedMeeting: $savedMeeting)
+                .environment(AppServices())
+        }
     }
 }
+
+
 
 
 

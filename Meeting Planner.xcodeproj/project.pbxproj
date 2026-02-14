@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		75CC6B142F40E72500524C41 /* EditMeetingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CC6B132F40E72400524C41 /* EditMeetingView.swift */; };
+		75CC6B162F40EB0000524C41 /* SearchOptimizationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CC6B152F40EB0000524C41 /* SearchOptimizationView.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		7592B91C2F37FE470059D4BC /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +32,8 @@
 		7592B90E2F37FE430059D4BC /* Meeting Planner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Meeting Planner.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7592B91B2F37FE470059D4BC /* Meeting PlannerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Meeting PlannerTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7592B9252F37FE470059D4BC /* Meeting PlannerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Meeting PlannerUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		75CC6B132F40E72400524C41 /* EditMeetingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditMeetingView.swift; sourceTree = "<group>"; };
+		75CC6B152F40EB0000524C41 /* SearchOptimizationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchOptimizationView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -79,6 +86,8 @@
 				7592B91E2F37FE470059D4BC /* Meeting PlannerTests */,
 				7592B9282F37FE470059D4BC /* Meeting PlannerUITests */,
 				7592B90F2F37FE430059D4BC /* Products */,
+				75CC6B132F40E72400524C41 /* EditMeetingView.swift */,
+				75CC6B152F40EB0000524C41 /* SearchOptimizationView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -236,6 +245,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				75CC6B142F40E72500524C41 /* EditMeetingView.swift in Sources */,
+				75CC6B162F40EB0000524C41 /* SearchOptimizationView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

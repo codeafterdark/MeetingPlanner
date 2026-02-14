@@ -4,6 +4,7 @@ struct HomeView: View {
     @Environment(AppServices.self) var appServices
     @State private var showingMeetingCreation = false
     @State private var showingSavedMeetings = false
+    @State private var showingDataDebug = false
     @State private var selectedMeeting: Meeting?
     @State private var selectedResults: [LocationAnalysis] = []
     @State private var selectedMeetingViewModel: MeetingViewModel?
@@ -85,6 +86,30 @@ struct HomeView: View {
                 .padding(.horizontal, 32)
                 .disabled(dataManager.savedMeetings.isEmpty)
                 
+                // Debug button - THIS IS THE NEW BUTTON!
+                Button("🔧 DEBUG DATA ISSUES") {
+                    showingDataDebug = true
+                }
+                .font(.headline)
+                .foregroundColor(.purple)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.purple.opacity(0.2))
+                .cornerRadius(12)
+                .padding(.horizontal, 32)
+                
+                // Temporary test button to confirm file updates
+                Button("🟣 TEST - FILE UPDATED!") {
+                    print("✅ HomeView file has been successfully updated!")
+                }
+                .font(.caption)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(Color.red)
+                .cornerRadius(8)
+                .padding(.horizontal, 32)
+                
                 Spacer()
             }
             .navigationTitle("Meeting Planner")
@@ -103,6 +128,10 @@ struct HomeView: View {
                 selectedMeetingViewModel?.results = results
             })
             .environment(appServices)
+        }
+        .sheet(isPresented: $showingDataDebug) {
+            DataDebugView()
+                .environment(appServices)
         }
         .fullScreenCover(isPresented: showingSelectedMeeting) {
             NavigationView {
